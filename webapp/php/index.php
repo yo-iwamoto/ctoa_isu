@@ -105,7 +105,7 @@ $container->set('helper', function ($c) {
         }
 
         public function try_login($account_name, $password) {
-            $user = $this->fetch_first('SELECT `account_name`,`passhash`, FROM users WHERE account_name = ? AND del_flg = 0', $account_name);
+            $user = $this->fetch_first('SELECT * FROM users WHERE account_name = ? AND del_flg = 0', $account_name);
             if ($user !== false && calculate_passhash($user['account_name'], $password) == $user['passhash']) {
                 return $user;
             } elseif ($user) {
@@ -365,20 +365,20 @@ $app->post('/', function (Request $request, Response $response) {
     if ($_FILES['file']) {
         $mime = '';
         // 投稿のContent-Typeからファイルのタイプを決定する
-        if (strpos($_FILES['file']['type'], 'jpeg')) {
+        if (strpos($_FILES['file']['type'], 'jpeg') !== false) {
             $mime = 'image/jpeg';
-        } elseif (strpos($_FILES['file']['type'], 'png')) {
+        } elseif (strpos($_FILES['file']['type'], 'png') !== false) {
             $mime = 'image/png';
-        } elseif (strpos($_FILES['file']['type'], 'gif')) {
+        } elseif (strpos($_FILES['file']['type'], 'gif') !== false) {
             $mime = 'image/gif';
         } else {
             $this->get('flash')->addMessage('notice', '投稿できる画像形式はjpgとpngとgifだけです');
-            return $response->withStatus(302)->withHeader('Location', '/');
+            return redirect($response, '/', 302);
         }
 
         if (strlen(file_get_contents($_FILES['file']['tmp_name'])) > UPLOAD_LIMIT) {
             $this->get('flash')->addMessage('notice', 'ファイルサイズが大きすぎます');
-            return $response->withStatus(302)->withHeader('Location', '/');
+            return redirect($response, '/', 302);
         }
 
         $db = $this->get('db');
@@ -394,7 +394,7 @@ $app->post('/', function (Request $request, Response $response) {
         return redirect($response, "/posts/{$pid}", 302);
     } else {
         $this->get('flash')->addMessage('notice', '画像が必須です');
-        return $response->withStatus(302)->withHeader('Location', '/');
+        return redirect($response, '/', 302);
     }
 });
 
@@ -403,25 +403,7 @@ $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $
         return $response;
     }
 
-    if (file_exists($cacheFile)) { // キャッシュが存在するか確認
-        $imgData = file_get_contents($cacheFile);
-        $mime = mime_content_type($cacheFile); // MIMEタイプを取得
-    } else {
-        $post = $this->get('helper')->fetch_first('SELECT `imgdata`,`mime` FROM `posts` WHERE `id` = ?', $args['id']);
-
-        if (($args['ext'] == 'jpg' && $post['mime'] == 'image/jpeg') ||
-            ($args['ext'] == 'png' && $post['mime'] == 'image/png') ||
-            ($args['ext'] == 'gif' && $post['mime'] == 'image/gif')) {
-            $imgData = $post['imgdata'];
-            $mime = $post['mime'];
-            
-            // 画像データをキャッシュとしてファイルに保存
-            file_put_contents($cacheFile, $imgData);
-        } else {
-            $response->getBody()->write('404');
-            return $response->withStatus(404);
-        }
-    }
+    $post = $this->get('helper')->fetch_first('SELECT * FROM `posts` WHERE `id` = ?', $args['id']);
 
     if (($args['ext'] == 'jpg' && $post['mime'] == 'image/jpeg') ||
         ($args['ext'] == 'png' && $post['mime'] == 'image/png') ||
