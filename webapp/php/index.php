@@ -410,7 +410,7 @@ $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $
         $imgData = file_get_contents($cacheFile);
         $mime = mime_content_type($cacheFile); // MIMEタイプを取得
     } else {
-        $post = $this->get('helper')->fetch_first('SELECT * FROM `posts` WHERE `id` = ?', $args['id']);
+        $post = $this->get('helper')->fetch_first('SELECT `imgdata`,`mime` FROM `posts` WHERE `id` = ?', $args['id']);
 
         if (($args['ext'] == 'jpg' && $post['mime'] == 'image/jpeg') ||
             ($args['ext'] == 'png' && $post['mime'] == 'image/png') ||
