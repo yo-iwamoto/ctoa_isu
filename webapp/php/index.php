@@ -193,9 +193,18 @@ function validate_user($account_name, $password) {
     return true;
 }
 
+function digest($src) {
+    $src = escapeshellarg($src);
+    return hash('sha512', $src);
+}
+
+function calculate_salt($account_name) {
+    return digest($account_name);
+}
+
 function calculate_passhash($account_name, $password) {
-    $salt = digest($account_name);
-    return hash('sha512', $salt);
+    $salt = calculate_salt($account_name);
+    return digest("{$password}:{$salt}");
 }
 
 // --------
