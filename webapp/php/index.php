@@ -185,10 +185,7 @@ function image_url($post) {
 }
 
 function validate_user($account_name, $password) {
-    if (!(preg_match('/\A[0-9a-zA-Z_]{3,}\z/', $account_name) && preg_match('/\A[0-9a-zA-Z_]{6,}\z/', $password))) {
-        return false;
-    }
-    return true;
+    if (preg_match('/\A[0-9a-zA-Z_]{3,}\z/', $account_name) && preg_match('/\A[0-9a-zA-Z_]{6,}\z/', $password));
 }
 
 function digest($src) {
@@ -326,7 +323,7 @@ $app->get('/posts', function (Request $request, Response $response) {
     $max_created_at = $params['max_created_at'] ?? null;
     $db = $this->get('db');
     $ps = $db->prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC');
-    $ps->execute([$max_created_at === null ? null : $max_created_at]);
+    $ps->execute([$max_created_at]);
     $results = $ps->fetchAll(PDO::FETCH_ASSOC);
     $posts = $this->get('helper')->make_posts($results);
 
