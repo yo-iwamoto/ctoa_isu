@@ -128,11 +128,16 @@ $container->set('helper', function ($c) {
         public function make_posts(array $results, $options = []) {
             $options += ['all_comments' => false];
             $all_comments = $options['all_comments'];
-
             $posts = [];
             foreach ($results as $post) {
-                $post['comment_count'] = $this->fetch_first('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?', $post['id'])['count'];
-                $query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC';
+                $query = '
+                    SELECT
+                        comments.*,
+                        users.account_name AS user_account_name
+                    FROM comments
+                    LEFT JOIN `users` ON `comments`.user_id = `users`.id
+                    WHERE `post_id` = ? ORDER BY `created_at` DESC
+                ';
                 if (!$all_comments) {
                     $query .= ' LIMIT 3';
                 }
@@ -140,10 +145,6 @@ $container->set('helper', function ($c) {
                 $ps = $this->db()->prepare($query);
                 $ps->execute([$post['id']]);
                 $comments = $ps->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($comments as &$comment) {
-                    $comment['user'] = $this->fetch_first('SELECT * FROM `users` WHERE `id` = ?', $comment['user_id']);
-                }
-                unset($comment);
                 $post['comments'] = array_reverse($comments);
 
                 $post['user'] = $this->fetch_first('SELECT * FROM `users` WHERE `id` = ?', $post['user_id']);
@@ -193,9 +194,7 @@ function validate_user($account_name, $password) {
 }
 
 function digest($src) {
-    // opensslのバージョンによっては (stdin)= というのがつくので取る
-    $src = escapeshellarg($src);
-    return trim(`printf "%s" {$src} | openssl dgst -sha512 | sed 's/^.*= //'`);
+    return hash('sha512', $src);
 }
 
 function calculate_salt($account_name) {
@@ -229,7 +228,6 @@ $app->post('/login', function (Request $request, Response $response) {
         return redirect($response, '/', 302);
     }
 
-    $db = $this->get('db');
     $params = $request->getParsedBody();
     $user = $this->get('helper')->try_login($params['account_name'], $params['password']);
 
@@ -240,7 +238,7 @@ $app->post('/login', function (Request $request, Response $response) {
         return redirect($response, '/', 302);
     } else {
         $this->get('flash')->addMessage('notice', 'アカウント名かパスワードが間違っています');
-        return redirect($response, '/login', 302);
+        return $response->withStatus(302)->withHeader('Location', '/login');
     }
 });
 
@@ -277,14 +275,30 @@ $app->post('/register', function (Request $request, Response $response) {
     }
 
     $db = $this->get('db');
-    $ps = $db->prepare('INSERT INTO `users` (`account_name`, `passhash`) VALUES (?,?)');
-    $ps->execute([
-        $account_name,
-        calculate_passhash($account_name, $password)
-    ]);
-    $_SESSION['user'] = [
-        'id' => $db->lastInsertId(),
-    ];
+
+    try {
+        $db->beginTransaction();
+
+        $ps = $db->prepare('INSERT INTO `users` (`account_name`, `passhash`) VALUES (?,?)');
+        $ps->execute([
+            $account_name,
+            calculate_passhash($account_name, $password)
+        ]);
+
+        $user_id = $db->lastInsertId();
+
+        $db->commit();
+    } catch (PDOException $e) {
+        $db->rollBack();
+        if ($e->getCode() == 23000) { // エラーコード23000は一意制約違反を示す
+            $this->get('flash')->addMessage('notice', 'アカウント名がすでに使われています');
+            return $response->withStatus(302)->withHeader('Location', '/register');
+        } else {
+            // エラーハンドリングの処理を追加
+        }
+    }
+
+    $_SESSION['user'] = ['id' => $user_id];
     return redirect($response, '/', 302);
 });
 
@@ -297,7 +311,7 @@ $app->get('/', function (Request $request, Response $response) {
     $me = $this->get('helper')->get_session_user();
 
     $db = $this->get('db');
-    $ps = $db->prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC');
+    $ps = $db->prepare('SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC LIMIT 20');
     $ps->execute();
     $results = $ps->fetchAll(PDO::FETCH_ASSOC);
     $posts = $this->get('helper')->make_posts($results);
@@ -494,27 +508,37 @@ $app->get('/@{account_name}', function (Request $request, Response $response, $a
         return $response->withStatus(404);
     }
 
-    $ps = $db->prepare('SELECT `id`, `user_id`, `body`, `created_at`, `mime` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC');
+    $ps = $db->prepare('SELECT `id`, `user_id`, `body`, `created_at`, `mime` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC LIMIT 20');
     $ps->execute([$user['id']]);
     $results = $ps->fetchAll(PDO::FETCH_ASSOC);
     $posts = $this->get('helper')->make_posts($results);
 
     $comment_count = $this->get('helper')->fetch_first('SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?', $user['id'])['count'];
 
-    $ps = $db->prepare('SELECT `id` FROM `posts` WHERE `user_id` = ?');
-    $ps->execute([$user['id']]);
-    $post_ids = array_column($ps->fetchAll(PDO::FETCH_ASSOC), 'id');
-    $post_count = count($post_ids);
+    $post_count = count($posts);
 
-    $commented_count = 0;
-    if ($post_count > 0) {
-        $placeholder = implode(',', array_fill(0, count($post_ids), '?'));
-        $commented_count = $this->get('helper')->fetch_first("SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN ({$placeholder})", ...$post_ids)['count'];
-    }
+    $commented_count = $this->get('helper')->fetch_first("
+        SELECT p.user_id, COUNT(c.id) AS commented_count
+        FROM posts p
+        LEFT JOIN comments c ON p.id = c.post_id
+        WHERE p.user_id = ?
+        GROUP BY p.user_id
+    ", [$user['id']])['commented_count'];
 
     $me = $this->get('helper')->get_session_user();
 
-    return $this->get('view')->render($response, 'user.php', ['posts' => $posts, 'user' => $user, 'post_count' => $post_count, 'comment_count' => $comment_count, 'commented_count'=> $commented_count, 'me' => $me]);
+    return $this->get('view')->render(
+        $response,
+        'user.php',
+        [
+            'posts' => $posts,
+            'user' => $user,
+            'post_count' => $post_count,
+            'comment_count' => $comment_count,
+            'commented_count'=> $commented_count,
+            'me' => $me,
+        ],
+    );
 });
 
 $app->run();
