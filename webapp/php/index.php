@@ -277,14 +277,30 @@ $app->post('/register', function (Request $request, Response $response) {
     }
 
     $db = $this->get('db');
-    $ps = $db->prepare('INSERT INTO `users` (`account_name`, `passhash`) VALUES (?,?)');
-    $ps->execute([
-        $account_name,
-        calculate_passhash($account_name, $password)
-    ]);
-    $_SESSION['user'] = [
-        'id' => $db->lastInsertId(),
-    ];
+
+    try {
+        $db->beginTransaction();
+
+        $ps = $db->prepare('INSERT INTO `users` (`account_name`, `passhash`) VALUES (?,?)');
+        $ps->execute([
+            $account_name,
+            calculate_passhash($account_name, $password)
+        ]);
+
+        $user_id = $db->lastInsertId();
+
+        $db->commit();
+    } catch (PDOException $e) {
+        $db->rollBack();
+        if ($e->getCode() == 23000) { // エラーコード23000は一意制約違反を示す
+            $this->get('flash')->addMessage('notice', 'アカウント名がすでに使われています');
+            return $response->withStatus(302)->withHeader('Location', '/register');
+        } else {
+            // エラーハンドリングの処理を追加
+        }
+    }
+
+    $_SESSION['user'] = ['id' => $user_id];
     return redirect($response, '/', 302);
 });
 
