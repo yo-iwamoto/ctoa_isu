@@ -365,20 +365,20 @@ $app->post('/', function (Request $request, Response $response) {
     if ($_FILES['file']) {
         $mime = '';
         // 投稿のContent-Typeからファイルのタイプを決定する
-        if (strpos($_FILES['file']['type'], 'jpeg') !== false) {
+        if (strpos($_FILES['file']['type'], 'jpeg')) {
             $mime = 'image/jpeg';
-        } elseif (strpos($_FILES['file']['type'], 'png') !== false) {
+        } elseif (strpos($_FILES['file']['type'], 'png')) {
             $mime = 'image/png';
-        } elseif (strpos($_FILES['file']['type'], 'gif') !== false) {
+        } elseif (strpos($_FILES['file']['type'], 'gif')) {
             $mime = 'image/gif';
         } else {
             $this->get('flash')->addMessage('notice', '投稿できる画像形式はjpgとpngとgifだけです');
-            return redirect($response, '/', 302);
+            return $response->withStatus(302)->withHeader('Location', '/');
         }
 
         if (strlen(file_get_contents($_FILES['file']['tmp_name'])) > UPLOAD_LIMIT) {
             $this->get('flash')->addMessage('notice', 'ファイルサイズが大きすぎます');
-            return redirect($response, '/', 302);
+            return $response->withStatus(302)->withHeader('Location', '/');
         }
 
         $db = $this->get('db');
@@ -394,7 +394,7 @@ $app->post('/', function (Request $request, Response $response) {
         return redirect($response, "/posts/{$pid}", 302);
     } else {
         $this->get('flash')->addMessage('notice', '画像が必須です');
-        return redirect($response, '/', 302);
+        return $response->withStatus(302)->withHeader('Location', '/');
     }
 });
 
