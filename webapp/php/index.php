@@ -399,20 +399,35 @@ $app->post('/', function (Request $request, Response $response) {
 });
 
 $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $args) {
+    $cacheDir = '/path/to/cache'; // ファイルキャッシュの保存場所を指定します
+    $cacheFile = $cacheDir.'/'.$args['id'].'.'.$args['ext'];
+
     if ($args['id'] == 0) {
         return $response;
     }
 
-    $post = $this->get('helper')->fetch_first('SELECT * FROM `posts` WHERE `id` = ?', $args['id']);
+    if (file_exists($cacheFile)) { // キャッシュが存在するか確認
+        $imgData = file_get_contents($cacheFile);
+        $mime = mime_content_type($cacheFile); // MIMEタイプを取得
+    } else {
+        $post = $this->get('helper')->fetch_first('SELECT * FROM `posts` WHERE `id` = ?', $args['id']);
 
-    if (($args['ext'] == 'jpg' && $post['mime'] == 'image/jpeg') ||
-        ($args['ext'] == 'png' && $post['mime'] == 'image/png') ||
-        ($args['ext'] == 'gif' && $post['mime'] == 'image/gif')) {
-        $response->getBody()->write($post['imgdata']);
-        return $response->withHeader('Content-Type', $post['mime']);
+        if (($args['ext'] == 'jpg' && $post['mime'] == 'image/jpeg') ||
+            ($args['ext'] == 'png' && $post['mime'] == 'image/png') ||
+            ($args['ext'] == 'gif' && $post['mime'] == 'image/gif')) {
+            $imgData = $post['imgdata'];
+            $mime = $post['mime'];
+            
+            // 画像データをキャッシュとしてファイルに保存
+            file_put_contents($cacheFile, $imgData);
+        } else {
+            $response->getBody()->write('404');
+            return $response->withStatus(404);
+        }
     }
-    $response->getBody()->write('404');
-    return $response->withStatus(404);
+
+    $response->getBody()->write($imgData);
+    return $response->withHeader('Content-Type', $mime);
 });
 
 $app->post('/comment', function (Request $request, Response $response) {
