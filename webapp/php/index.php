@@ -130,7 +130,6 @@ $container->set('helper', function ($c) {
             $all_comments = $options['all_comments'];
             $posts = [];
             foreach ($results as $post) {
-                $post['comment_count'] = $this->fetch_first('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?', $post['id'])['count'];
                 $query = '
                     SELECT
                         comments.*,
@@ -531,7 +530,18 @@ $app->get('/@{account_name}', function (Request $request, Response $response, $a
 
     $me = $this->get('helper')->get_session_user();
 
-    return $this->get('view')->render($response, 'user.php', ['posts' => $posts, 'user' => $user, 'post_count' => $post_count, 'comment_count' => $comment_count, 'commented_count'=> $commented_count, 'me' => $me]);
+    return $this->get('view')->render(
+        $response,
+        'user.php',
+        [
+            'posts' => $posts,
+            'user' => $user,
+            'post_count' => $post_count,
+            'comment_count' => $comment_count,
+            'commented_count'=> $commented_count,
+            'me' => $me,
+        ],
+    );
 });
 
 $app->run();
