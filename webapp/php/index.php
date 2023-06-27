@@ -231,7 +231,6 @@ $app->post('/login', function (Request $request, Response $response) {
         return redirect($response, '/', 302);
     }
 
-    $db = $this->get('db');
     $params = $request->getParsedBody();
     $user = $this->get('helper')->try_login($params['account_name'], $params['password']);
 
@@ -242,7 +241,7 @@ $app->post('/login', function (Request $request, Response $response) {
         return redirect($response, '/', 302);
     } else {
         $this->get('flash')->addMessage('notice', 'アカウント名かパスワードが間違っています');
-        return redirect($response, '/login', 302);
+        return $response->withStatus(302)->withHeader('Location', '/login');
     }
 });
 
