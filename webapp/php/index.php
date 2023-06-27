@@ -399,16 +399,16 @@ $app->post('/', function (Request $request, Response $response) {
 });
 
 $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $args) {
-    $cacheDir = './static'; // ファイルキャッシュの保存場所を指定します
+    $cacheDir = './static';
     $cacheFile = $cacheDir.'/'.$args['id'].'.'.$args['ext'];
 
     if ($args['id'] == 0) {
         return $response;
     }
 
-    if (file_exists($cacheFile)) { // キャッシュが存在するか確認
+    if (file_exists($cacheFile)) {
         $imgData = file_get_contents($cacheFile);
-        $mime = mime_content_type($cacheFile); // MIMEタイプを取得
+        $mime = mime_content_type($cacheFile);
     } else {
         $post = $this->get('helper')->fetch_first('SELECT * FROM `posts` WHERE `id` = ?', $args['id']);
 
@@ -418,7 +418,6 @@ $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $
             $imgData = $post['imgdata'];
             $mime = $post['mime'];
             
-            // 画像データをキャッシュとしてファイルに保存
             file_put_contents($cacheFile, $imgData);
         } else {
             $response->getBody()->write('404');
