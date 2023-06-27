@@ -11,8 +11,6 @@ $_SERVER += ['PATH_INFO' => $_SERVER['REQUEST_URI']];
 $_SERVER['SCRIPT_NAME'] = '/' . basename($_SERVER['SCRIPT_FILENAME']);
 $file = dirname(__DIR__) . '/public' . $_SERVER['REQUEST_URI'];
 if (is_file($file)) {
-    header('Cache-Control: public, max-age=86400, immutable');
-
     if (PHP_SAPI == 'cli-server') return false;
     $mimetype = [
         'ico' => 'image/vnd.microsoft.icon',
