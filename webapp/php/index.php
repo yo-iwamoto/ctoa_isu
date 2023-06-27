@@ -11,8 +11,6 @@ $_SERVER += ['PATH_INFO' => $_SERVER['REQUEST_URI']];
 $_SERVER['SCRIPT_NAME'] = '/' . basename($_SERVER['SCRIPT_FILENAME']);
 $file = dirname(__DIR__) . '/public' . $_SERVER['REQUEST_URI'];
 if (is_file($file)) {
-    header('Cache-Control: public, max-age=86400, immutable');
-
     if (PHP_SAPI == 'cli-server') return false;
     $mimetype = [
         'ico' => 'image/vnd.microsoft.icon',
@@ -404,6 +402,8 @@ $app->post('/', function (Request $request, Response $response) {
 });
 
 $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $args) {
+    header('Cache-Control: public, max-age=31536000, immutable');
+
     if ($args['id'] == 0) {
         return $response;
     }
