@@ -531,7 +531,18 @@ $app->get('/@{account_name}', function (Request $request, Response $response, $a
 
     $me = $this->get('helper')->get_session_user();
 
-    return $this->get('view')->render($response, 'user.php', ['posts' => $posts, 'user' => $user, 'post_count' => $post_count, 'comment_count' => $comment_count, 'commented_count'=> $commented_count, 'me' => $me]);
+    return $this->get('view')->render(
+        $response,
+        'user.php',
+        [
+            'posts' => $posts,
+            'user' => $user,
+            'post_count' => $post_count,
+            'comment_count' => $comment_count,
+            'commented_count'=> $commented_count,
+            'me' => $me,
+        ],
+    );
 });
 
 $app->run();
