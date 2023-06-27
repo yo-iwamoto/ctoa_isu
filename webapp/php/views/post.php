@@ -14,7 +14,7 @@
   </div>
   <div class="isu-post-comment">
     <div class="isu-post-comment-count">
-      comments: <b><?= escape_html($post['comment_count']) ?></b>
+      comments: <b><?= count($post['comments']) ?></b>
     </div>
 
     <?php foreach ($post['comments'] as $comment): ?>

@@ -130,7 +130,6 @@ $container->set('helper', function ($c) {
             $all_comments = $options['all_comments'];
             $posts = [];
             foreach ($results as $post) {
-                $post['comment_count'] = $this->fetch_first('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?', $post['id'])['count'];
                 $query = '
                     SELECT
                         comments.*,
