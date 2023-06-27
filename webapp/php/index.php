@@ -185,7 +185,7 @@ function image_url($post) {
 }
 
 function validate_user($account_name, $password) {
-    if (preg_match('/\A[0-9a-zA-Z_]{3,}\z/', $account_name) && preg_match('/\A[0-9a-zA-Z_]{6,}\z/', $password));
+    return preg_match('/\A[0-9a-zA-Z_]{3,}\z/', $account_name) && preg_match('/\A[0-9a-zA-Z_]{6,}\z/', $password);
 }
 
 function digest($src) {
