@@ -17,4 +17,6 @@ server {
         fastcgi_index index.php;
         fastcgi_pass app:9000;
     }
+
+    access_log /var/log/nginx/access_log ltsv;
 }
