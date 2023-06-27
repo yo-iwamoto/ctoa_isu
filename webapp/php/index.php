@@ -194,7 +194,6 @@ function validate_user($account_name, $password) {
 }
 
 function digest($src) {
-    $src = escapeshellarg($src);
     return hash('sha512', $src);
 }
 
