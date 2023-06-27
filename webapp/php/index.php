@@ -399,7 +399,7 @@ $app->post('/', function (Request $request, Response $response) {
 });
 
 $app->get('/image/{id}.{ext}', function (Request $request, Response $response, $args) {
-    $cacheDir = '/path/to/cache'; // ファイルキャッシュの保存場所を指定します
+    $cacheDir = './static'; // ファイルキャッシュの保存場所を指定します
     $cacheFile = $cacheDir.'/'.$args['id'].'.'.$args['ext'];
 
     if ($args['id'] == 0) {
